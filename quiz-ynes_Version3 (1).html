@@ -1,0 +1,655 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>Pour Toi</title>
+  <style>
+    :root{
+      --bg-gradient-start:#141118;
+      --bg-gradient-end:#24192b;
+      --card-bg:rgba(36,28,44,0.75);
+      --card-border:rgba(212,175,55,0.15);
+      --text-primary:#f5f0eb;
+      --text-muted:#bdaebf;
+      --accent-gold:#d4af37;
+      --accent-rose:#dca399;
+      --btn-bg:rgba(212,175,55,0.08);
+      --btn-hover:rgba(212,175,55,0.18);
+      --btn-selected:rgba(220,163,153,0.25);
+      --success-color:#5da977;
+      --error-color:#c95d5d;
+      --focus-color: #8bd3ff;
+    }
+
+    *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+
+    body{
+      font-family:-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Georgia, Cambria, serif;
+      background:linear-gradient(135deg,var(--bg-gradient-start),var(--bg-gradient-end));
+      color:var(--text-primary);
+      min-height:100vh;
+      display:flex;
+      justify-content:center;
+      align-items:center;
+      padding:20px;
+      overflow-x:hidden;
+    }
+
+    /* Canvas pour les confettis */
+    #confetti-canvas{position:fixed;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:999}
+
+    .container{width:100%;max-width:480px;perspective:1000px}
+
+    .card{
+      background:var(--card-bg);
+      border:1px solid var(--card-border);
+      border-radius:24px;
+      padding:32px 24px;
+      box-shadow:0 15px 35px rgba(0,0,0,0.4), inset 0 1px 2px rgba(255,255,255,0.05);
+      backdrop-filter:blur(12px);
+      -webkit-backdrop-filter:blur(12px);
+      transition:all 0.4s cubic-bezier(0.4,0,0.2,1);
+      opacity:0;
+      transform:translateY(20px);
+      display:none;
+    }
+
+    .card.active{display:block;opacity:1;transform:translateY(0)}
+
+    .welcome-screen{text-align:center}
+    .title-name{font-family:Georgia, serif;font-size:32px;font-weight:400;color:var(--accent-gold);margin-bottom:24px;letter-spacing:1px}
+    .intro-text{font-size:15px;line-height:1.6;color:var(--text-muted);margin-bottom:32px;font-style:italic}
+    .discreet-note{font-size:12px;color:rgba(189,174,191,0.5);margin-top:24px;display:block}
+
+    .quiz-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;font-size:13px;color:var(--text-muted);letter-spacing:0.5px}
+    .progress-bar-container{width:100%;height:4px;background:rgba(255,255,255,0.05);border-radius:2px;margin-bottom:32px;overflow:hidden}
+    .progress-bar-fill{height:100%;width:0%;background:linear-gradient(90deg,var(--accent-gold),var(--accent-rose));transition:width 0.3s ease}
+    .question-text{font-family:Georgia, serif;font-size:20px;line-height:1.4;color:var(--text-primary);margin-bottom:28px}
+    .options-list{display:flex;flex-direction:column;gap:14px}
+    .option-btn{
+      background:var(--btn-bg);
+      border:1px solid rgba(255,255,255,0.06);
+      border-radius:16px;
+      padding:16px 20px;
+      color:var(--text-primary);
+      font-size:15px;
+      text-align:left;
+      cursor:pointer;
+      transition:all 0.15s ease;
+      line-height:1.4;
+      outline:none;
+    }
+    .option-btn:active{transform:scale(0.98)}
+    @media (hover:hover){ .option-btn:hover{background:var(--btn-hover);border-color:rgba(212,175,55,0.3)} }
+    .option-btn.selected{background:var(--btn-selected);border-color:var(--accent-rose);box-shadow:0 0 12px rgba(220,163,153,0.15)}
+    .option-btn:focus{box-shadow:0 0 0 3px rgba(139,211,255,0.2);border-color:var(--focus-color)}
+
+    .results-screen{text-align:center}
+    .score-circle{width:110px;height:110px;border-radius:50%;border:2px solid var(--accent-gold);display:flex;flex-direction:column;justify-content:center;align-items:center;margin:0 auto 24px auto;background:rgba(212,175,55,0.03)}
+    .score-number{font-size:36px;font-family:Georgia, serif;color:var(--accent-gold);font-weight:bold}
+    .score-label{font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:1px;margin-top:-2px}
+    .result-comment{font-size:15px;line-height:1.6;color:var(--text-muted);margin-bottom:28px}
+    .action-buttons{display:flex;flex-direction:column;gap:12px;margin-bottom:12px}
+
+    .primary-btn{background:linear-gradient(135deg,var(--accent-gold),#bfa02c);color:#141118;border:none;border-radius:16px;padding:16px 24px;font-size:15px;font-weight:600;cursor:pointer;transition:all 0.2s ease;box-shadow:0 4px 15px rgba(212,175,55,0.2);display:inline-block}
+    .primary-btn:active{transform:scale(0.97);box-shadow:0 2px 8px rgba(212,175,55,0.1)}
+    .secondary-btn{background:transparent;color:var(--text-primary);border:1px solid rgba(255,255,255,0.15);border-radius:16px;padding:14px 24px;font-size:14px;cursor:pointer;transition:all 0.2s ease}
+    .secondary-btn:active{background:rgba(255,255,255,0.05)}
+    .danger-btn{background:transparent;color:rgba(201,93,93,0.7);border:none;font-size:12px;cursor:pointer;margin-top:16px;text-decoration:underline;opacity:0.6}
+
+    .review-section{text-align:left;margin-top:32px;border-top:1px solid rgba(255,255,255,0.08);padding-top:28px}
+    .review-title{font-family:Georgia, serif;font-size:18px;color:var(--accent-gold);margin-bottom:20px}
+    .review-card{background:rgba(255,255,255,0.02);border-radius:16px;padding:16px;margin-bottom:16px;border-left:3px solid transparent}
+    .review-card.correct{border-left-color:var(--success-color)}
+    .review-card.incorrect{border-left-color:var(--error-color)}
+    .review-q{font-weight:500;font-size:14px;margin-bottom:8px;line-height:1.4}
+    .review-status{font-size:11px;text-transform:uppercase;letter-spacing:0.5px;font-weight:bold;margin-bottom:6px}
+    .correct .review-status{color:var(--success-color)}
+    .incorrect .review-status{color:var(--error-color)}
+    .review-ans{font-size:13px;color:var(--text-muted);margin-bottom:4px}
+    .review-exp{font-size:13px;color:var(--accent-rose);font-style:italic;margin-top:6px;padding-top:6px;border-top:1px dashed rgba(255,255,255,0.05)}
+    .final-signature{font-family:Georgia, serif;font-size:14px;text-align:center;color:var(--accent-rose);margin-top:40px;line-height:1.6;font-style:italic}
+
+    .toast{position:fixed;bottom:30px;left:50%;transform:translateX(-50%) translateY(100px);background:rgba(20,17,24,0.9);border:1px solid var(--accent-gold);color:var(--text-primary);padding:12px 24px;border-radius:30px;font-size:13px;z-index:1000;transition:transform 0.3s cubic-bezier(0.175,0.885,0.32,1.275);pointer-events:none;box-shadow:0 10px 25px rgba(0,0,0,0.5);white-space:nowrap}
+    .toast.show{transform:translateX(-50%) translateY(0)}
+
+    .confetti-toggle{display:inline-flex;align-items:center;gap:8px;justify-content:center}
+
+    /* Respecter la préférence de l'utilisateur pour réduire les animations */
+    @media (prefers-reduced-motion: reduce){
+      *{transition:none!important;animation:none!important}
+      #confetti-canvas{display:none!important}
+    }
+
+    /* Focus visible pour clavier */
+    :focus{outline:none}
+  </style>
+</head>
+<body>
+  <canvas id="confetti-canvas" aria-hidden="true"></canvas>
+
+  <div class="container">
+    <!-- 1. ÉCRAN D'ACCUEIL -->
+    <div id="screen-welcome" class="card active welcome-screen" aria-hidden="false">
+      <h1 class="title-name" id="intro-partner-name">Sonia Elise</h1>
+      <p class="intro-text">
+        J’ai préparé ça pour voir si tu lis vraiment entre mes silences.<br><br>
+        Certaines réponses sont faciles. D’autres, seules les personnes qui font attention les connaissent.<br><br>
+        Ce quiz n’est pas un test. C’est une petite carte de moi, cachée dans des questions.
+      </p>
+      <button type="button" id="start-btn" class="primary-btn">Commencer le quiz</button>
+      <span class="discreet-note">Réponds avec ton instinct. Je saurai si tu triches.</span>
+    </div>
+
+    <!-- 2. ÉCRAN QUIZ -->
+    <div id="screen-quiz" class="card" aria-hidden="true">
+      <div class="quiz-header">
+        <span id="quiz-progress-text">Question 1/20</span>
+        <span id="quiz-category">Catégorie</span>
+      </div>
+      <div class="progress-bar-container">
+        <div id="progress-bar" class="progress-bar-fill" role="progressbar" aria-valuemin="0" aria-valuemax="100"></div>
+      </div>
+      <div class="question-text" id="question-text">Question en cours d'affichage...</div>
+      <div class="options-list" id="options-container" role="list" aria-label="Options de réponse">
+        <!-- Les boutons d'options seront injectés ici -->
+      </div>
+    </div>
+
+    <!-- 3. ÉCRAN RÉSULTATS -->
+    <div id="screen-results" class="card results-screen" aria-hidden="true">
+      <div class="score-circle" aria-live="polite">
+        <span class="score-number" id="final-score" aria-live="polite">0</span>
+        <span class="score-label">sur 20</span>
+      </div>
+      <div class="result-comment" id="result-comment" aria-live="polite">
+        Chargement de l'évaluation...
+      </div>
+
+      <div class="action-buttons" role="region" aria-label="Actions après le quiz">
+        <button type="button" class="primary-btn" id="whatsapp-btn">M'envoyer mes réponses</button>
+        <button type="button" class="secondary-btn" id="copy-btn">Copier le résultat</button>
+        <button type="button" class="secondary-btn" id="restart-btn" style="margin-top:12px;opacity:0.7;">Recommencer le quiz</button>
+        <button type="button" class="danger-btn" id="clear-btn">Effacer mes données et recommencer</button>
+        <div style="margin-top:12px;display:flex;justify-content:center;">
+          <div class="confetti-toggle" id="confetti-control" aria-hidden="true">
+            <button type="button" class="secondary-btn" id="confetti-toggle-btn" aria-pressed="true">Confettis : On</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Récapitulatif -->
+      <div class="review-section">
+        <h2 class="review-title">Le détail de tes réponses</h2>
+        <div id="review-container">
+          <!-- Les cartes récapitulatives seront injectées ici -->
+        </div>
+      </div>
+
+      <p class="final-signature" id="final-signature-quote"></p>
+    </div>
+  </div>
+
+  <div id="toast" class="toast" role="status" aria-live="polite">Copié dans le presse-papiers !</div>
+
+  <script>
+    /*****************************************************************
+     * CONFIGURATION PERSONNALISABLE
+     *****************************************************************/
+    const PARTNER_NAME = "Sonia Elise";
+    const WHATSAPP_NUMBER = "33614469188"; // Format international sans '+'
+    const FINAL_QUOTE = "Comme le beurre caractérise un avocat exceptionnel, je te caractérise comme la femme exceptionnelle que tous les hommes rêveraient d'avoir.";
+
+    const questions = [
+      {category:"Mes goûts",question:"Quelle est ma couleur préférée ?",options:["Noire","Bleue","Blanche","Rouge"],answer:"Noire",explanation:"Le noir, simple, élégant et intemporel. Tu avais le bon œil !"},
+      {category:"Mes goûts",question:"Quel est mon plat préféré de tous les temps ?",options:["Ndolé","Okok","Thieb","Attiéké"],answer:"Okok",explanation:"Rien ne dépasse le Okok. C'est le choix du cœur."},
+      {category:"Mes habitudes",question:"Pour me ressourcer, tu penses que je préfère...",options:["Sortir voir du monde","Rester sereinement à la maison","Aller faire la fête dans un club"],answer:"Rester sereinement à la maison",explanation:"La maison est mon havre de paix. C'est là que je recharge mes batteries."},
+      {category:"Mes rêves",question:"Quel est mon plus grand rêve secret dans la vie ?",options:["Devenir immensément riche et célèbre","Voir tous les gens autour de moi épanouis","Faire le tour du monde en solitaire"],answer:"Voir tous les gens autour de moi épanouis",explanation:"Mon bonheur passe par celui de mes proches. Te voir épanouie en fait pleinement partie."},
+      {category:"Ce qui me touche",question:"Qu'est-ce qui me rend sincèrement et vraiment heureux ?",options:["Sentir que je suis utile autour de moi","Qu'on me laisse tranquille sans me parler","Avoir toujours le dernier mot"],answer:"Sentir que je suis utile autour de moi",explanation:"Apporter quelque chose aux autres, donner du sens et de l'aide, c'est ce qui m'anime."},
+      {category:"Ce qui m'énerve",question:"Qu'est-ce qui a le don de m'énerver le plus au monde ?",options:["Les personnes en retard","Les jours de pluie","Sentir qu'on se fout de ma gueule"],answer:"Sentir qu'on se fout de ma gueule",explanation:"Le manque de respect ou la malhonnêteté me coupent immédiatement l'envie d'échanger."},
+      {category:"Mes préférences",question:"Si je veux communiquer avec toi, je préfère largement...",options:["Les longs messages écrits","Un appel direct","Des dizaines de notes vocales"],answer:"Un appel direct",explanation:"Entendre ta voix en direct vaut toutes les lignes de texte du monde."},
+      {category:"Mes habitudes",question:"Quel est mon endroit préféré pour décompresser et me détendre ?",options:["Le bord de l'eau","Un café très animé en centre-ville","Une salle de sport bondée"],answer:"Le bord de l'eau",explanation:"L'eau amène le calme et la clarté d'esprit dont j'ai besoin."},
+      {category:"Notre relation",question:"Quel genre de femme me plaît et me fait vibrer profondément ?",options:["Une femme fêtarde, extravertie et superficielle","Une femme qui craint DIEU, belle de l'intérieur comme de l'extérieur, intelligente, attentionnée, de belles formes","Une femme distante qui ne s'implique jamais"],answer:"Une femme qui craint DIEU, belle de l'intérieur comme de l'extérieur, intelligente, attentionnée, de belles formes",explanation:"C'est la description exacte de qui tu es pour moi. Sonia, Ynes... tu l'as en toi."},
+      {category:"Mes ambitions",question:"Dans quelques années, où est-ce que je me vois avant tout ?",options:["Vivre en solitaire à l'autre bout de la terre","Fonder et chérir la famille que Dieu m'a donnée","Me concentrer uniquement sur une carrière d'entreprise"],answer:"Fonder et chérir la famille que Dieu m'a donnée",explanation:"C'est mon ambition la plus sacrée. Construire notre foyer sous le regard de Dieu."},
+      {category:"Mes petites manies",question:"Quel détail discret me trahit instantanément quand je suis fatigué ?",options:["Je parle beaucoup moins","Je souris de manière excessive","Je réponds à toute vitesse","Je m'agite dans tous les sens"],answer:"Je parle beaucoup moins",explanation:"Mes silences sont souvent le signe que mon énergie est au plus bas. Tu l'avais remarqué ?"},
+      {category:"Mes habitudes",question:"Quel petit rituel du matin ne change jamais chez moi ?",options:["Prendre un temps pour prier et remercier Dieu","Regarder immédiatement mes réseaux sociaux","Allumer la télévision"],answer:"Prendre un temps pour prier et remercier Dieu",explanation:"Commencer la journée par la foi et la gratitude est ma fondation."},
+      {category:"Ma manière d'aimer",question:"Comment est-ce que j'exprime le plus naturellement mon affection ?",options:["Par de grands discours en public","Par des actions concrètes et des attentions discrètes","Par des cadeaux démesurés sans raison"],answer:"Par des actions concrètes et des attentions discrètes",explanation:"Je préfère prouver mon amour par des actes réels plutôt que par des mots superficiels."},
+      {category:"Mes défauts",question:"Parmi ces traits de caractère, lequel est mon plus grand péché mignon ou petit défaut ?",options:["Vouloir parfois tout contrôler par sécurité","Être dépensier sans compter","Oublier complètement mes engagements"],answer:"Vouloir parfois tout contrôler par sécurité",explanation:"Par peur de mal faire ou de voir mes proches souffrir, je peux avoir tendance à vouloir tout border."},
+      {category:"Mes goûts",question:"Si on devait choisir un style musical qui m'accompagne souvent en arrière-plan...",options:["Du hard rock agressif","Des chants de louange ou des mélodies douces","De la techno pure"],answer:"Des chants de louange ou des mélodies douces",explanation:"La musique doit apaiser mon esprit ou élever mon âme."},
+      {category:"Ce qui me touche",question:"Qu'est-ce qui me touche le plus profondément chez une personne ?",options:["Son statut social","Sa sincérité brute et sa bienveillance désintéressée","Ses vêtements de marque"],answer:"Sa sincérité brute et sa bienveillance désintéressée",explanation:"La pureté du cœur est la seule chose qui a de la valeur à mes yeux."},
+      {category:"Mes contradictions",question:"Quand je dis 'Tout va bien' d'un ton un peu réservé, cela signifie généralement...",options:["Que tout va merveilleusement bien","Que je trie mes pensées avant d'en parler","Que je n'ai plus jamais envie de te parler"],answer:"Que je trie mes pensées avant d'en parler",explanation:"Je ne ferme pas la porte, j'analyse juste la situation en moi-même avant de l'ouvrir."},
+      {category:"Notre relation",question:"Pour moi, un moment parfait partagé avec toi ressemble à...",options:["Une sortie minutée dans un lieu ultra-branché","Partager des rires et des discussions vraies, sans artifice","Rester sur nos téléphones respectifs"],answer:"Partager des rires et des discussions vraies, sans artifice",explanation:"L'authenticité de nos échanges est ce qui me rend le plus proche de toi."},
+      {category:"Ma philosophie",question:"Quelle phrase résume le mieux ma vision de la vie ?",options:["Profiter de tout sans penser aux conséquences","Être un pilier solide pour ceux que j'aime et marcher selon ma foi","Chacun pour soi et Dieu pour tous"],answer:"Être un pilier solide pour ceux que j'aime et marcher selon ma foi",explanation:"C'est ma boussole quotidienne. Être là pour toi, pour les miens, sous la conduite divine."},
+      {category:"Notre relation",question:"Au fond, ce petit quiz est pour moi une manière de...",options:["Te piéger pour rigoler","Te partager une petite carte de moi, cachée dans des questions, pour te faire sourire","Remplir le temps libre"],answer:"Te partager une petite carte de moi, cachée dans des questions, pour te faire sourire",explanation:"Peu importe la note finale, ce qui compte c'est ce sourire que tu as en ce moment même."}
+    ];
+
+    const scoreMessages = {
+      low: "Tu connais déjà quelques facettes, mais il reste tant de zones secrètes à explorer ensemble. Prenons le temps de nous raconter encore.",
+      medium: "Tu connais une bonne partie de mes habitudes et de mes pensées. Tu sais lire une partie de mes silences, mais je peux encore te surprendre !",
+      high: "C'est impressionnant... Tu fais vraiment attention aux moindres détails. Tu me connais presque par cœur, ton intuition te trompe rarement.",
+      perfect: "20/20. Tu me connais dans mes moindres vérités, mes manies et mes rêves. Tu lis en moi comme dans un livre ouvert. Tu es exceptionnelle."
+    };
+
+    /*****************************************************************
+     * ÉTAT & NAVIGATION
+     *****************************************************************/
+    let currentQuestionIndex = 0;
+    let userAnswers = {};
+    let confettiEnabled = true;
+    const REDUCED_MOTION = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+    // Elements globaux
+    const startBtn = document.getElementById('start-btn');
+    const whatsappBtn = document.getElementById('whatsapp-btn');
+    const copyBtn = document.getElementById('copy-btn');
+    const restartBtn = document.getElementById('restart-btn');
+    const clearBtn = document.getElementById('clear-btn');
+    const confettiToggleBtn = document.getElementById('confetti-toggle-btn');
+
+    document.addEventListener('DOMContentLoaded', () => {
+      document.getElementById('intro-partner-name').innerText = PARTNER_NAME;
+      document.getElementById('final-signature-quote').innerText = FINAL_QUOTE;
+      // Initialize buttons
+      startBtn.addEventListener('click', startQuiz);
+      whatsappBtn.addEventListener('click', sendWhatsApp);
+      copyBtn.addEventListener('click', copyResults);
+      restartBtn.addEventListener('click', restartQuiz);
+      clearBtn.addEventListener('click', clearAndRestart);
+      confettiToggleBtn.addEventListener('click', toggleConfetti);
+
+      loadProgress();
+      initConfettiPrefControl();
+    });
+
+    function showScreen(screenId){
+      document.querySelectorAll('.card').forEach(card=>{
+        card.classList.remove('active');
+        card.setAttribute('aria-hidden','true');
+      });
+      setTimeout(()=>{
+        document.querySelectorAll('.card').forEach(card=>card.style.display='none');
+        const active = document.getElementById(screenId);
+        active.style.display='block';
+        active.setAttribute('aria-hidden','false');
+        setTimeout(()=>{
+          active.classList.add('active');
+          // focus management
+          if(screenId === 'screen-welcome'){
+            startBtn.focus();
+          } else if(screenId === 'screen-quiz'){
+            // focus handled in renderQuestion (first option)
+            const firstOpt = document.querySelector('#options-container .option-btn');
+            if(firstOpt) firstOpt.focus();
+          } else if(screenId === 'screen-results'){
+            document.getElementById('final-score').focus();
+          }
+        },50);
+      },400);
+    }
+
+    function startQuiz(){
+      currentQuestionIndex = 0;
+      userAnswers = {};
+      try{ localStorage.removeItem('quiz_progress'); } catch(e){}
+      renderQuestion();
+      showScreen('screen-quiz');
+    }
+
+    function renderQuestion(){
+      if(currentQuestionIndex >= questions.length){
+        finishQuiz();
+        return;
+      }
+
+      const q = questions[currentQuestionIndex];
+      document.getElementById('quiz-progress-text').innerText = `Question ${currentQuestionIndex+1}/${questions.length}`;
+      document.getElementById('quiz-category').innerText = q.category;
+
+      const progressPercent = (currentQuestionIndex / questions.length) * 100;
+      const progressBar = document.getElementById('progress-bar');
+      progressBar.style.width = `${progressPercent}%`;
+      progressBar.setAttribute('aria-valuenow', Math.round(progressPercent));
+
+      document.getElementById('question-text').innerText = q.question;
+
+      const container = document.getElementById('options-container');
+      container.innerHTML = '';
+
+      q.options.forEach((option, i) => {
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.className = 'option-btn';
+        button.setAttribute('role','button');
+        button.setAttribute('aria-label', option);
+        button.dataset.optIndex = i;
+        // restore selection if present
+        if(userAnswers[currentQuestionIndex] === option){
+          button.classList.add('selected');
+        }
+        button.innerText = option;
+        button.onclick = () => selectOption(option, button);
+        container.appendChild(button);
+      });
+
+      // Ensure buttons are focusable and keyboard navigation works
+      const buttons = container.querySelectorAll('.option-btn');
+      buttons.forEach(b => b.style.pointerEvents = '');
+
+      // focus first option for keyboard users
+      setTimeout(() => {
+        const first = container.querySelector('.option-btn');
+        if(first) first.focus();
+      }, 40);
+    }
+
+    function selectOption(selectedOption, buttonElement){
+      // disable further clicks on current option set
+      const buttons = document.querySelectorAll('.option-btn');
+      buttons.forEach(btn => btn.style.pointerEvents = 'none');
+
+      buttonElement.classList.add('selected');
+      userAnswers[currentQuestionIndex] = selectedOption;
+
+      setTimeout(()=>{
+        currentQuestionIndex++;
+        saveProgress();
+        renderQuestion();
+      }, 350);
+    }
+
+    function finishQuiz(){
+      document.getElementById('progress-bar').style.width = '100%';
+      document.getElementById('progress-bar').setAttribute('aria-valuenow', 100);
+
+      let score = 0;
+      questions.forEach((q, idx) => {
+        if(userAnswers[idx] === q.answer) score++;
+      });
+
+      document.getElementById('final-score').innerText = score;
+
+      let comment = '';
+      if(score <= 5) comment = scoreMessages.low;
+      else if(score <= 11) comment = scoreMessages.medium;
+      else if(score <= 18) comment = scoreMessages.high;
+      else comment = scoreMessages.perfect;
+
+      document.getElementById('result-comment').innerHTML = `<strong>Merci d'avoir joué, ${PARTNER_NAME}.</strong><br><br>${comment}`;
+
+      renderReview();
+
+      // Confetti policy: respect prefers-reduced-motion and user toggle & device size
+      if(shouldPlayConfetti()){
+        initConfetti();
+      }
+
+      showScreen('screen-results');
+    }
+
+    function renderReview(){
+      const container = document.getElementById('review-container');
+      container.innerHTML = '';
+
+      questions.forEach((q, index) => {
+        const userAns = userAnswers[index] || 'Aucune réponse';
+        const isCorrect = userAns === q.answer;
+
+        const card = document.createElement('div');
+        card.className = `review-card ${isCorrect ? 'correct' : 'incorrect'}`;
+        card.innerHTML = `
+          <div class="review-status">${isCorrect ? '✓ Bonne réponse' : '✕ Te souviens-tu ?'}</div>
+          <div class="review-q">${index+1}. ${q.question}</div>
+          <div class="review-ans"><strong>Ta réponse :</strong> ${userAns}</div>
+          ${!isCorrect ? `<div class="review-ans"><strong>La bonne réponse :</strong> ${q.answer}</div>` : ''}
+          <div class="review-exp">${q.explanation}</div>
+        `;
+        container.appendChild(card);
+      });
+    }
+
+    function restartQuiz(){
+      currentQuestionIndex = 0;
+      userAnswers = {};
+      try{ localStorage.removeItem('quiz_progress'); } catch(e){}
+      startQuiz();
+    }
+
+    function clearAndRestart(){
+      if(confirm("Veux-tu vraiment effacer ton avancée et recommencer à zéro ?")){
+        try{ localStorage.removeItem('quiz_progress'); } catch(e){}
+        currentQuestionIndex = 0;
+        userAnswers = {};
+        showScreen('screen-welcome');
+      }
+    }
+
+    /*****************************************************************
+     * PERSISTENCE (localStorage safe wrapper)
+     *****************************************************************/
+    function saveProgress(){
+      const data = { currentQuestionIndex, userAnswers };
+      try{ localStorage.setItem('quiz_progress', JSON.stringify(data)); } catch(e){ console.warn('Impossible de sauvegarder: ', e); }
+    }
+
+    function loadProgress(){
+      let saved = null;
+      try{ saved = localStorage.getItem('quiz_progress'); } catch(e){ saved = null; }
+      if(saved){
+        try{
+          const data = JSON.parse(saved);
+          currentQuestionIndex = typeof data.currentQuestionIndex === 'number' ? data.currentQuestionIndex : 0;
+          userAnswers = data.userAnswers || {};
+          if(currentQuestionIndex > 0){
+            if(currentQuestionIndex >= questions.length) finishQuiz();
+            else { renderQuestion(); showScreen('screen-quiz'); }
+          }
+        } catch(e){
+          try{ localStorage.removeItem('quiz_progress'); } catch(e){}
+        }
+      }
+    }
+
+    /*****************************************************************
+     * PARTAGE (WhatsApp & Presse-papiers)
+     *****************************************************************/
+    function generateSummaryText(){
+      let score = 0;
+      questions.forEach((q, idx)=>{ if(userAnswers[idx] === q.answer) score++; });
+
+      let text = `✨ Quiz Privé de ${PARTNER_NAME} ✨\n`;
+      text += `Mon score : ${score}/${questions.length}\n\n`;
+      text += `Chaque détail compte. Voici un résumé de mes réponses :\n`;
+
+      questions.forEach((q, i)=>{
+        const userAns = userAnswers[i] || 'Pas de réponse';
+        const icon = userAns === q.answer ? '✅' : '❌';
+        text += `${i+1}. ${q.question} -> ${userAns} ${icon}\n`;
+      });
+
+      text += `\n"${FINAL_QUOTE}"`;
+      return text;
+    }
+
+    function sendWhatsApp(){
+      const text = generateSummaryText();
+      const formattedText = encodeURIComponent(text);
+      const url = `https://wa.me/${WHATSAPP_NUMBER}?text=${formattedText}`;
+      window.open(url, '_blank');
+    }
+
+    function copyResults(){
+      const text = generateSummaryText();
+      if(navigator.clipboard && navigator.clipboard.writeText){
+        navigator.clipboard.writeText(text).then(showToast).catch(()=>fallbackCopyText(text));
+      } else {
+        fallbackCopyText(text);
+      }
+    }
+
+    function fallbackCopyText(text){
+      const textarea = document.createElement('textarea');
+      textarea.value = text;
+      textarea.style.position = 'fixed';
+      textarea.style.left = '-9999px';
+      document.body.appendChild(textarea);
+      textarea.select();
+      try{
+        document.execCommand('copy');
+        showToast();
+      } catch(e){
+        console.warn('Copy failed', e);
+        alert('Impossible de copier automatiquement. Sélectionne et copie manuellement le texte affiché.');
+      }
+      document.body.removeChild(textarea);
+    }
+
+    function showToast(){
+      const toast = document.getElementById('toast');
+      toast.classList.add('show');
+      setTimeout(()=>toast.classList.remove('show'),2500);
+    }
+
+    /*****************************************************************
+     * CONFETTI (optionnel, léger, respects reduced-motion)
+     *****************************************************************/
+    function initConfetti(){
+      if(REDUCED_MOTION) return;
+      const canvas = document.getElementById('confetti-canvas');
+      const ctx = canvas.getContext('2d');
+      let animationFrameId;
+
+      function setSize(){ canvas.width = window.innerWidth; canvas.height = window.innerHeight; }
+      setSize();
+      window.addEventListener('resize', setSize);
+
+      // adjust count/duration for mobile
+      const isMobile = window.innerWidth <= 480 || /Mobi|Android/i.test(navigator.userAgent);
+      const confettiCount = isMobile ? 36 : 80;
+      const duration = isMobile ? 3500 : 6000;
+
+      const colors = ['#d4af37','#dca399','#f5f0eb','#bfa02c','#e5a99e'];
+      const confettiParticles = [];
+
+      for(let i=0;i<confettiCount;i++){
+        confettiParticles.push({
+          x: Math.random()*canvas.width,
+          y: Math.random()*canvas.height - canvas.height,
+          size: Math.random()*6+4,
+          color: colors[Math.floor(Math.random()*colors.length)],
+          speedX: Math.random()*2-1,
+          speedY: Math.random()*3+2,
+          rotation: Math.random()*360,
+          rotationSpeed: Math.random()*4-2,
+        });
+      }
+
+      function updateAndRender(){
+        ctx.clearRect(0,0,canvas.width,canvas.height);
+        let alive = false;
+        confettiParticles.forEach(p=>{
+          if(p.y < canvas.height) alive = true;
+          p.y += p.speedY;
+          p.x += p.speedX;
+          p.rotation += p.rotationSpeed;
+          ctx.save();
+          ctx.translate(p.x,p.y);
+          ctx.rotate(p.rotation*Math.PI/180);
+          ctx.fillStyle = p.color;
+          ctx.fillRect(-p.size/2,-p.size/2,p.size,p.size);
+          ctx.restore();
+        });
+        if(alive) animationFrameId = requestAnimationFrame(updateAndRender);
+        else cancelAnimationFrame(animationFrameId);
+      }
+
+      updateAndRender();
+
+      // Stop automatic loop after duration
+      setTimeout(()=>{
+        cancelAnimationFrame(animationFrameId);
+        ctx.clearRect(0,0,canvas.width,canvas.height);
+      }, Math.max(2000, duration));
+    }
+
+    // Confetti preference storage & logic
+    function initConfettiPrefControl(){
+      // Load saved preference
+      try{
+        const saved = localStorage.getItem('confetti_enabled');
+        if(typeof saved === 'string') confettiEnabled = saved === 'true';
+      }catch(e){}
+      // If user prefers reduced motion, disable and reflect in UI
+      if(REDUCED_MOTION){
+        confettiEnabled = false;
+        confettiToggleBtn.innerText = 'Confettis : Off (réduit)';
+        confettiToggleBtn.setAttribute('aria-pressed', 'false');
+        confettiToggleBtn.parentElement.setAttribute('aria-hidden','true');
+        // hide and disable toggle control when reduced motion is active
+        document.getElementById('confetti-control').style.display = 'none';
+      } else {
+        updateConfettiToggleUI();
+      }
+    }
+
+    function toggleConfetti(){
+      confettiEnabled = !confettiEnabled;
+      try{ localStorage.setItem('confetti_enabled', String(confettiEnabled)); } catch(e){}
+      updateConfettiToggleUI();
+      // immediate feedback: play a small burst if turned on
+      if(confettiEnabled) initConfetti();
+    }
+
+    function updateConfettiToggleUI(){
+      confettiToggleBtn.innerText = `Confettis : ${confettiEnabled ? 'On' : 'Off'}`;
+      confettiToggleBtn.setAttribute('aria-pressed', String(!!confettiEnabled));
+      document.getElementById('confetti-control').setAttribute('aria-hidden', String(!confettiEnabled));
+    }
+
+    function shouldPlayConfetti(){
+      if(REDUCED_MOTION) return false;
+      if(!confettiEnabled) return false;
+      // also avoid if offline or low memory hints (best effort)
+      try{
+        if(navigator.connection && navigator.connection.saveData) return false;
+      }catch(e){}
+      return true;
+    }
+
+    /*****************************************************************
+     * KEYBOARD NAVIGATION (arrows to move, Enter/Space to select)
+     *****************************************************************/
+    document.addEventListener('keydown', (ev) => {
+      // Only act if quiz screen visible
+      const quizScreen = document.getElementById('screen-quiz');
+      if(quizScreen.getAttribute('aria-hidden') === 'false'){
+        const options = Array.from(document.querySelectorAll('#options-container .option-btn'));
+        if(!options.length) return;
+
+        const activeEl = document.activeElement;
+        const index = options.indexOf(activeEl);
+
+        if(ev.key === 'ArrowDown' || ev.key === 'ArrowRight'){
+          ev.preventDefault();
+          const next = (index >= 0 && index < options.length - 1) ? options[index + 1] : options[0];
+          next.focus();
+        } else if(ev.key === 'ArrowUp' || ev.key === 'ArrowLeft'){
+          ev.preventDefault();
+          const prev = (index > 0) ? options[index - 1] : options[options.length - 1];
+          prev.focus();
+        } else if(ev.key === 'Enter' || ev.key === ' '){
+          // Space or Enter selects the focused option
+          if(index >= 0){
+            ev.preventDefault();
+            options[index].click();
+          }
+        }
+      }
+    });
+
+    /*****************************************************************
+     * End of script
+     *****************************************************************/
+  </script>
+</body>
+</html>
